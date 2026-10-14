@@ -135,9 +135,9 @@ input:focus, textarea:focus, select:focus {
 
 /* Top Navigation Bar */
 .top-header {
-  height: var(--hf-header-height);
+  min-height: var(--hf-header-height);
   border-bottom: 1px solid var(--hf-border-subtle);
-  background: rgba(7, 7, 10, 0.85);
+  background: rgba(7, 7, 10, 0.95);
   backdrop-filter: blur(16px);
   position: sticky;
   top: 0;
@@ -145,19 +145,21 @@ input:focus, textarea:focus, select:focus {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 24px;
+  padding: 6px 16px;
+  gap: 8px;
 }
 
 .brand-section {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
+  flex-shrink: 0;
 }
 
 .brand-logo-icon {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
   background: var(--hf-gradient-primary);
   display: flex;
   align-items: center;
@@ -171,7 +173,7 @@ input:focus, textarea:focus, select:focus {
 }
 
 .brand-title {
-  font-size: 17px;
+  font-size: 15px;
   font-weight: 800;
   letter-spacing: -0.01em;
   background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 100%);
@@ -180,10 +182,10 @@ input:focus, textarea:focus, select:focus {
 }
 
 .brand-subtitle {
-  font-size: 10px;
+  font-size: 9px;
   font-family: var(--hf-font-mono);
   color: var(--hf-accent-cyan);
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   font-weight: 600;
 }
 
@@ -191,23 +193,25 @@ input:focus, textarea:focus, select:focus {
 .nav-tabs {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
   background: rgba(255, 255, 255, 0.03);
-  padding: 4px;
+  padding: 2px;
   border-radius: var(--hf-radius-lg);
   border: 1px solid var(--hf-border-subtle);
+  flex-shrink: 1;
 }
 
 .nav-tab-btn {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 14px;
+  gap: 5px;
+  padding: 5px 8px;
   border-radius: var(--hf-radius-md);
-  font-size: 13px;
+  font-size: 11.5px;
   font-weight: 500;
   color: var(--hf-text-secondary);
   transition: all 0.2s ease;
+  white-space: nowrap;
 }
 
 .nav-tab-btn:hover {
@@ -223,21 +227,22 @@ input:focus, textarea:focus, select:focus {
 }
 
 .tab-badge {
-  font-size: 10px;
-  padding: 2px 6px;
+  font-size: 9px;
+  padding: 1px 4px;
   border-radius: 999px;
   background: rgba(99, 102, 241, 0.2);
   color: var(--hf-accent-primary);
   border: 1px solid rgba(99, 102, 241, 0.4);
   font-weight: 700;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
 }
 
 /* Header Right Actions */
 .header-right-actions {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
 .cluster-status-pill {

@@ -10,6 +10,7 @@ import { AdsStudioView } from './components/AdsStudioView';
 import { InfiniteCanvasView } from './components/InfiniteCanvasView';
 import { ExploreView } from './components/ExploreView';
 import { McpApiView } from './components/McpApiView';
+import { SettingsView } from './components/SettingsView';
 import { SettingsModal } from './components/SettingsModal';
 import './styles/studio.css';
 import './styles/modules.css';
@@ -26,7 +27,8 @@ export function App() {
     { id: 'ads', label: 'Ads Studio', icon: Megaphone, badge: 'AI CMO' },
     { id: 'canvas', label: 'Infinite Canvas', icon: Workflow, badge: null },
     { id: 'explore', label: 'Explore', icon: Compass, badge: null },
-    { id: 'mcp', label: 'MCP & API', icon: Terminal, badge: 'v2.0' }
+    { id: 'mcp', label: 'MCP & API', icon: Terminal, badge: 'v2.0' },
+    { id: 'settings', label: 'Configuración', icon: Settings, badge: 'APIs' }
   ];
 
   return (
@@ -69,32 +71,30 @@ export function App() {
 
         {/* Right Status & Profile Actions */}
         <div className="header-right-actions">
-          <div className="cluster-status-pill">
-            <span className="pulse-dot" />
-            <span>128x H100 READY</span>
-          </div>
+          <button 
+            id="open-settings-header-btn"
+            className="btn-primary-gradient" 
+            style={{ padding: '7px 14px', fontSize: 12, gap: 6 }}
+            onClick={() => setActiveTab('settings')}
+          >
+            <Settings size={15} />
+            <span>Configuración</span>
+          </button>
 
           <div className="credits-counter">
             <Coins size={14} color="#f59e0b" />
             <span>{credits} CR</span>
           </div>
-
-          <button 
-            id="open-settings-btn"
-            className="btn-secondary" 
-            style={{ padding: '8px 12px' }}
-            onClick={() => setIsSettingsOpen(true)}
-            title="Cluster & API Settings"
-          >
-            <Settings size={15} />
-          </button>
         </div>
       </header>
 
       {/* Viewport Render Area */}
       <div className="main-viewport">
         {activeTab === 'studio' && (
-          <StudioView onNavigateToGenjutsu={() => setActiveTab('genjutsu')} />
+          <StudioView 
+            onNavigateToGenjutsu={() => setActiveTab('genjutsu')} 
+            onOpenSettings={() => setActiveTab('settings')}
+          />
         )}
         {activeTab === 'genjutsu' && <GenjutsuView />}
         {activeTab === 'influencer' && <InfluencerView />}
@@ -103,10 +103,15 @@ export function App() {
         {activeTab === 'explore' && (
           <ExploreView onRemixVideo={() => setActiveTab('studio')} />
         )}
-        {activeTab === 'mcp' && <McpApiView />}
+        {activeTab === 'mcp' && (
+          <McpApiView onOpenSettings={() => setActiveTab('settings')} />
+        )}
+        {activeTab === 'settings' && (
+          <SettingsView onClose={() => setActiveTab('studio')} />
+        )}
       </div>
 
-      {/* Settings Modal */}
+      {/* Settings Modal (Also accessible if triggered) */}
       <SettingsModal 
         isOpen={isSettingsOpen} 
         onClose={() => setIsSettingsOpen(false)} 

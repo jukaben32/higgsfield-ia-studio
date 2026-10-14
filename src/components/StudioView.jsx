@@ -7,7 +7,7 @@ import {
 import { AI_MODELS, SAMPLE_VIDEOS, CAMERA_PRESETS } from '../data/mockAssets';
 import { generateRealVideo } from '../services/aiService';
 
-export function StudioView({ onNavigateToGenjutsu }) {
+export function StudioView({ onNavigateToGenjutsu, onOpenSettings }) {
   const [mode, setMode] = useState('text-to-video');
   const [selectedModel, setSelectedModel] = useState(AI_MODELS[0]);
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
@@ -162,6 +162,32 @@ export function StudioView({ onNavigateToGenjutsu }) {
     <div className="studio-layout">
       {/* Left Control Panel */}
       <aside className="studio-sidebar">
+        {/* Quick Settings CTA */}
+        <div 
+          onClick={onOpenSettings}
+          style={{
+            background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(6, 182, 212, 0.15))',
+            border: '1px solid rgba(99, 102, 241, 0.4)',
+            borderRadius: 10,
+            padding: '10px 14px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+            marginBottom: 4
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Sliders size={15} color="var(--hf-accent-cyan)" />
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#fff' }}>⚙️ Configurar APIs (Fal.ai)</div>
+              <div style={{ fontSize: 10, color: 'var(--hf-text-secondary)' }}>Haz clic para ingresar tus claves de GPU</div>
+            </div>
+          </div>
+          <ArrowRight size={13} color="var(--hf-accent-cyan)" />
+        </div>
+
         {/* Mode Switcher */}
         <div>
           <div className="panel-section-title">Generation Studio Mode</div>

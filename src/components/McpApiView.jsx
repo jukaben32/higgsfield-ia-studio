@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import { MCP_TOOLS_SPEC } from '../data/mockAssets';
 
-export function McpApiView() {
+export function McpApiView({ onOpenSettings }) {
   const [selectedTool, setSelectedTool] = useState(MCP_TOOLS_SPEC[0]);
   const [copiedKey, setCopiedKey] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
@@ -104,6 +104,26 @@ print(f"Video URL: {result.video_url}")`,
           <span className="badge-tag cyan">MCP SPEC 2024-11-05</span>
           <span className="badge-tag emerald">GATEWAY HEALTHY</span>
         </div>
+      </div>
+
+      {/* Settings Action Banner */}
+      <div className="quanta-card" style={{ marginBottom: 20, background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(6, 182, 212, 0.15) 100%)', borderColor: 'rgba(99, 102, 241, 0.4)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+        <div>
+          <div style={{ fontWeight: 700, fontSize: 15, color: '#fff' }}>
+            ⚙️ Conecta tus claves API personales (Fal.ai, ElevenLabs, Replicate)
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--hf-text-secondary)', marginTop: 2 }}>
+            Configura tus claves para generar vídeos reales para YouTube y Publicidad directamente desde el estudio.
+          </div>
+        </div>
+        <button 
+          id="mcp-open-settings-cta"
+          className="btn-primary-gradient"
+          style={{ padding: '8px 20px', fontSize: 13 }}
+          onClick={() => onOpenSettings && onOpenSettings()}
+        >
+          ⚙️ Ir a Configuración de Claves
+        </button>
       </div>
 
       {/* API Key Box */}
