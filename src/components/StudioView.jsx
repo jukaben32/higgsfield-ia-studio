@@ -5,6 +5,7 @@ import {
   Image as ImageIcon, Sliders, ChevronDown, Check, Share2, Copy
 } from 'lucide-react';
 import { AI_MODELS, SAMPLE_VIDEOS, CAMERA_PRESETS } from '../data/mockAssets';
+import { generateRealVideo } from '../services/aiService';
 
 export function StudioView({ onNavigateToGenjutsu }) {
   const [mode, setMode] = useState('text-to-video');
@@ -26,6 +27,7 @@ export function StudioView({ onNavigateToGenjutsu }) {
   const [currentVideo, setCurrentVideo] = useState(SAMPLE_VIDEOS[0]);
   const [isPlaying, setIsPlaying] = useState(true);
   const [isMuted, setIsMuted] = useState(true);
+  const [errorMessage, setErrorMessage] = useState('');
   
   const videoRef = useRef(null);
 
@@ -42,12 +44,72 @@ export function StudioView({ onNavigateToGenjutsu }) {
     }
   };
 
-  // Generation Simulator with realistic fnf-* microservice stages
-  const handleStartGeneration = () => {
+  // Generation Handler: uses real Fal.ai API if key is saved, otherwise high-precision cluster simulator
+  const handleStartGeneration = async () => {
     if (isGenerating) return;
     setIsGenerating(true);
     setGenerationProgress(0);
+    setErrorMessage('');
 
+    // Check for saved Fal.ai API Key
+    let falKey = '';
+    try {
+      const saved = localStorage.getItem('hf_studio_settings');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        falKey = parsed.falKey || '';
+      }
+    } catch (e) {}
+
+    if (!falKey && typeof import.meta !== 'undefined' && import.meta.env?.VITE_FAL_KEY) {
+      falKey = import.meta.env.VITE_FAL_KEY;
+    }
+
+    if (falKey) {
+      // REAL GENERATION VIA FAL.AI
+      setGenerationPhase(`Connected to Fal.ai H100 cluster • Dispatching ${selectedModel.name}...`);
+      setGenerationProgress(20);
+
+      try {
+        const result = await generateRealVideo({
+          prompt,
+          model: selectedModel.id,
+          aspectRatio: selectedRatio,
+          duration,
+          falKey
+        });
+
+        setGenerationProgress(100);
+        setGenerationPhase('Generation complete! Loading 4K MP4 stream...');
+
+        setTimeout(() => {
+          setIsGenerating(false);
+          const newVideo = {
+            id: `real-${Date.now()}`,
+            title: prompt.slice(0, 28) + '...',
+            model: selectedModel.name,
+            prompt: prompt,
+            url: result.videoUrl,
+            duration: `0:0${duration}`,
+            likes: '1',
+            views: '1'
+          };
+          setCurrentVideo(newVideo);
+          if (videoRef.current) {
+            videoRef.current.currentTime = 0;
+            videoRef.current.play().catch(() => {});
+            setIsPlaying(true);
+          }
+        }, 500);
+      } catch (err) {
+        console.error('Real generation error:', err);
+        setErrorMessage(err.message || 'Generation error');
+        setIsGenerating(false);
+      }
+      return;
+    }
+
+    // SIMULATED PIPELINE (When no key is configured)
     const phases = [
       { p: 15, msg: 'Validating safety & prompt embeddings (fnf-score)...' },
       { p: 35, msg: `Sampling latent diffusion noise on ${selectedModel.name}...` },
@@ -70,7 +132,6 @@ export function StudioView({ onNavigateToGenjutsu }) {
           clearInterval(interval);
           setTimeout(() => {
             setIsGenerating(false);
-            // Switch to a new video or randomized output
             const nextIdx = (SAMPLE_VIDEOS.findIndex(v => v.id === currentVideo.id) + 1) % SAMPLE_VIDEOS.length;
             setCurrentVideo(SAMPLE_VIDEOS[nextIdx]);
             if (videoRef.current) {
@@ -265,6 +326,12 @@ export function StudioView({ onNavigateToGenjutsu }) {
 
         {/* Generate Action Button */}
         <div className="generate-action-wrap">
+          {errorMessage && (
+            <div style={{ background: 'rgba(244, 63, 94, 0.15)', border: '1px solid rgba(244, 63, 94, 0.4)', borderRadius: 8, padding: 10, fontSize: 12, color: '#fca5a5' }}>
+              <strong>Error de Inferencia:</strong> {errorMessage}
+            </div>
+          )}
+
           <button 
             id="generate-video-btn"
             className="btn-primary-gradient btn-generate-main"
@@ -274,6 +341,7 @@ export function StudioView({ onNavigateToGenjutsu }) {
             <Wand2 size={18} />
             <span>Generate with {selectedModel.name}</span>
           </button>
+          
           <div className="cost-estimate-note">
             <Zap size={13} color="#f59e0b" />
             <span>Estimated cost: {Math.round(duration * selectedModel.costPerSec)} credits (H100 Node)</span>
