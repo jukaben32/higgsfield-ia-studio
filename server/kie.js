@@ -66,6 +66,42 @@ export async function createTask(model, input) {
   return taskId;
 }
 
+// Convierte texto JSON en objeto; si no es JSON válido devuelve null
+function parseJson(text) {
+  if (typeof text !== 'string' || !text) return null;
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
+
+const asArray = (value) => (Array.isArray(value) ? value : []);
+
+// Saca las URLs del resultado. La mayoría de modelos usan { resultUrls: [...] }, pero:
+//  - Veo 3.1 en 1080p/4K guarda el video en data.result_urls (y el de 720p en data.origin_urls)
+//  - Suno guarda las canciones en data[] con un audio_url por pista
+// Además miramos "response" (la versión ya convertida de resultJson).
+export function extractResultUrls(data) {
+  const sources = [parseJson(data.resultJson), data.response && typeof data.response === 'object' ? data.response : null]
+    .filter(Boolean);
+  const urls = [];
+  const add = (value) => {
+    if (typeof value === 'string' && /^https?:\/\//.test(value)) urls.push(value);
+  };
+
+  for (const source of sources) {
+    asArray(source.resultUrls).forEach(add);
+    asArray(source.data?.result_urls).forEach(add);
+    asArray(source.data).forEach((track) => add(track?.audio_url ?? track?.audioUrl));
+  }
+  if (!urls.length) {
+    // Último recurso: la versión de 720p de Veo
+    sources.forEach((source) => asArray(source.data?.origin_urls).forEach(add));
+  }
+  return [...new Set(urls)];
+}
+
 // Consulta el estado de una tarea y lo devuelve simplificado
 export async function getTask(taskId) {
   const json = await kieFetch(
@@ -73,23 +109,19 @@ export async function getTask(taskId) {
     { method: 'GET' }
   );
   const data = json.data || {};
+  const urls = extractResultUrls(data);
 
-  // resultJson viene como texto JSON; lo convertimos a objeto con cuidado
-  let urls = [];
-  if (data.resultJson) {
-    try {
-      urls = JSON.parse(data.resultJson).resultUrls || [];
-    } catch {
-      urls = [];
-    }
-  }
+  // KIE dice "listo" pero no vino ningún archivo: avisamos en vez de mostrar una pantalla vacía
+  const emptySuccess = data.state === 'success' && urls.length === 0;
 
   return {
     taskId: data.taskId || taskId,
     model: data.model || '',
-    state: data.state || 'waiting', // waiting | queuing | generating | success | fail
+    state: emptySuccess ? 'fail' : (data.state || 'waiting'), // waiting | queuing | generating | success | fail
     urls,
-    failMsg: data.failMsg || '',
+    failMsg: emptySuccess
+      ? `KIE terminó la tarea pero no devolvió ningún archivo. Revísala en kie.ai (tarea ${data.taskId || taskId}).`
+      : (data.failMsg || ''),
     credits: data.creditsConsumed ?? null,
   };
 }

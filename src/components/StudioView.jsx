@@ -60,8 +60,9 @@ export function StudioView() {
   const selectModel = (m) => {
     setModelId(m.id);
     setQuality(m.qualities[0].id);
-    if (!m.ratios.includes(ratio)) setRatio(m.ratios[0]);
-    if (m.minDuration) setDuration((d) => Math.min(Math.max(d, m.minDuration), m.maxDuration));
+    if (m.ratios.length && !m.ratios.includes(ratio)) setRatio(m.ratios[0]);
+    if (m.durations) setDuration((d) => (m.durations.includes(d) ? d : m.durations[0]));
+    else if (m.minDuration) setDuration((d) => Math.min(Math.max(d, m.minDuration), m.maxDuration));
   };
 
   const switchMode = (next) => {
@@ -76,14 +77,21 @@ export function StudioView() {
     const effect = VFX_PRESETS.find((e) => e.id === effectId);
     const finalPrompt = effect ? `${prompt.trim()}. ${effect.text}` : prompt;
     const params = mode === 'video'
-      ? { type: 'video', model: model.id, prompt: finalPrompt, imageUrl, ratio, duration, quality, sound }
+      ? { type: 'video', model: model.id, prompt: finalPrompt, imageUrl, ratio, duration, quality, sound: model.sound && sound }
       : { type: 'image', model: model.id, prompt, imageUrls: [imageUrl, imageUrl2].filter(Boolean), ratio, quality };
     const task = await run(params, { type: mode, modelName: model.name, prompt });
     if (task) setResult({ ...task, type: mode });
   };
 
-  // Kling usa el formato de la foto cuando hay imagen, así que ocultamos el selector
-  const showRatio = !(mode === 'video' && model.id === 'kling-3' && imageUrl);
+  // Algunos modelos toman el formato de la foto cuando hay imagen (o no tienen formatos): ocultamos el selector
+  const showRatio = model.ratios.length > 0 && !(mode === 'video' && model.ratioWithImage === false && imageUrl);
+
+  // Qué fotos acepta el modelo elegido
+  const acceptsImage = mode === 'video' ? model.image !== 'none' : model.maxRefs > 0;
+  const acceptsSecondImage = mode === 'image' && model.maxRefs > 1;
+  const needsImage = mode === 'video' && model.image === 'required';
+  const missingImage = needsImage && !imageUrl;
+  const maxPrompt = model.maxPrompt || 2500;
 
   return (
     <div className="studio-layout">
@@ -101,25 +109,34 @@ export function StudioView() {
         </div>
 
         <div>
-          <div className="panel-section-title">Modelo</div>
-          {models.map((m) => (
-            <div key={m.id} className={`model-option-item ${model.id === m.id ? 'selected' : ''}`} onClick={() => selectModel(m)}>
-              <div>
-                <div style={{ fontWeight: 600, fontSize: 13 }}>{m.name}</div>
-                <div style={{ fontSize: 11, color: 'var(--hf-text-muted)' }}>{m.desc}</div>
+          <div className="panel-section-title">
+            <span>Modelo</span>
+            <span style={{ color: 'var(--hf-text-muted)' }}>{models.length} disponibles</span>
+          </div>
+          <div className="model-list-scroll">
+            {models.map((m) => (
+              <div key={m.id} className={`model-option-item ${model.id === m.id ? 'selected' : ''}`} onClick={() => selectModel(m)}>
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: 13 }}>
+                    {m.name} <span style={{ fontWeight: 400, fontSize: 11, color: 'var(--hf-text-muted)' }}>· {m.creator}</span>
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--hf-text-muted)' }}>{m.desc}</div>
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
 
-        <ImageUpload
-          label={mode === 'video' ? 'Imagen inicial (opcional)' : 'Imagen de referencia (opcional)'}
-          hint={mode === 'video' ? 'Súbela para animar una foto (imagen → video)' : 'Ej.: tu producto o tu logo'}
-          imageUrl={imageUrl}
-          onChange={setImageUrl}
-        />
+        {acceptsImage && (
+          <ImageUpload
+            label={mode === 'video' ? (needsImage ? 'Imagen inicial (obligatoria)' : 'Imagen inicial (opcional)') : 'Imagen de referencia (opcional)'}
+            hint={mode === 'video' ? 'Súbela para animar una foto (imagen → video)' : 'Ej.: tu producto o tu logo'}
+            imageUrl={imageUrl}
+            onChange={setImageUrl}
+          />
+        )}
 
-        {mode === 'image' && (
+        {acceptsSecondImage && (
           <ImageUpload
             label="Segunda referencia (opcional)"
             hint="Ej.: la prenda o el producto"
@@ -128,7 +145,7 @@ export function StudioView() {
           />
         )}
 
-        {mode === 'image' && (
+        {mode === 'image' && model.maxRefs > 0 && (
           <div>
             <div className="panel-section-title">Plantillas</div>
             <div className="camera-chips-grid">
@@ -158,11 +175,11 @@ export function StudioView() {
         <div className="prompt-container">
           <div className="panel-section-title">
             <span>Descripción</span>
-            <span style={{ color: 'var(--hf-text-muted)' }}>{prompt.length} / 2500</span>
+            <span style={{ color: 'var(--hf-text-muted)' }}>{prompt.length} / {maxPrompt}</span>
           </div>
           <textarea
             className="prompt-textarea"
-            maxLength={2500}
+            maxLength={maxPrompt}
             placeholder="Describe la escena: quién aparece, qué hace, lugar, luz y movimiento de cámara…"
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
@@ -183,23 +200,33 @@ export function StudioView() {
 
         {mode === 'video' && (
           <>
-            <div className="param-slider-group">
-              <div className="slider-label-row">
-                <span style={{ color: 'var(--hf-text-secondary)' }}>Duración</span>
-                <span className="slider-val-badge">{duration}s</span>
+            {model.durations ? (
+              <div>
+                <div className="panel-section-title">Duración</div>
+                <ChipGroup options={model.durations.map((d) => ({ id: d, label: `${d} s` }))} value={duration} onChange={setDuration} />
               </div>
-              <input type="range" min={model.minDuration} max={model.maxDuration} value={duration} onChange={(e) => setDuration(Number(e.target.value))} />
-            </div>
-            <label className="toggle-row">
-              <input type="checkbox" checked={sound} onChange={(e) => setSound(e.target.checked)} />
-              <span>Generar sonido (cuesta más)</span>
-            </label>
+            ) : (
+              <div className="param-slider-group">
+                <div className="slider-label-row">
+                  <span style={{ color: 'var(--hf-text-secondary)' }}>Duración</span>
+                  <span className="slider-val-badge">{duration}s</span>
+                </div>
+                <input type="range" min={model.minDuration} max={model.maxDuration} value={duration} onChange={(e) => setDuration(Number(e.target.value))} />
+              </div>
+            )}
+            {model.sound && (
+              <label className="toggle-row">
+                <input type="checkbox" checked={sound} onChange={(e) => setSound(e.target.checked)} />
+                <span>Generar sonido (cuesta más)</span>
+              </label>
+            )}
           </>
         )}
 
         <div className="generate-action-wrap">
+          {missingImage && <div className="inline-error">{model.name} solo anima una foto: sube la imagen inicial para continuar.</div>}
           {error && <div className="inline-error">{error}</div>}
-          <button type="button" className="btn-primary-gradient btn-generate-main" onClick={handleGenerate} disabled={isRunning}>
+          <button type="button" className="btn-primary-gradient btn-generate-main" onClick={handleGenerate} disabled={isRunning || missingImage}>
             <Wand2 size={18} />
             <span>{isRunning ? describeState(state) : `Generar con ${model.name}`}</span>
           </button>

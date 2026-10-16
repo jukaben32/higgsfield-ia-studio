@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Clapperboard, Film, Wand2, Users, Megaphone, History, Settings, Coins, Zap } from 'lucide-react';
+import { Clapperboard, Film, Wand2, Users, Megaphone, History, Settings, Coins, Zap, Music } from 'lucide-react';
 import { StudioView } from './components/StudioView';
+import { AudioView } from './components/AudioView';
 import { CinemaView } from './components/CinemaView';
 import { ToolsView } from './components/ToolsView';
 import { InfluencerView } from './components/InfluencerView';
@@ -18,6 +19,7 @@ const NAV_ITEMS = [
   { id: 'studio', label: 'Studio', icon: Clapperboard },
   { id: 'cinema', label: 'Cinema', icon: Film },
   { id: 'tools', label: 'Herramientas', icon: Wand2 },
+  { id: 'audio', label: 'Audio', icon: Music },
   { id: 'avatar', label: 'Avatar', icon: Users },
   { id: 'hooks', label: 'Ganchos y guiones', icon: Megaphone },
   { id: 'history', label: 'Historial', icon: History },
@@ -97,6 +99,7 @@ export function App() {
         {view('studio', <StudioView />)}
         {view('cinema', <CinemaView />)}
         {view('tools', <ToolsView />)}
+        {view('audio', <AudioView />)}
         {view('avatar', <InfluencerView incomingScript={scriptForAvatar} />)}
         {view('hooks', <AdsStudioView onUseScript={handleUseScript} />)}
         {view('history', <HistoryView />)}

@@ -1,55 +1,17 @@
-// Catálogo REAL de modelos de KIE.ai que usa el estudio.
-// Este archivo no tiene claves: lo leen tanto la página (para mostrar opciones)
-// como el servidor (para validar lo que llega antes de gastar créditos).
+// Datos del estudio que leen tanto la página (para mostrar opciones) como el
+// servidor (para validar lo que llega antes de gastar créditos).
+// Este archivo no tiene claves.
+//
+// Los modelos de video e imagen viven en ./catalog (un archivo por familia).
+// Aquí quedan las herramientas, los efectos y las plantillas, y se re-exporta
+// el catálogo para que el resto de la app siga importando desde un solo lugar.
 // Documentación de cada modelo: https://docs.kie.ai/market/...
 
-// Modelos de video: ambos sirven para texto→video y para imagen→video
-export const VIDEO_MODELS = [
-  {
-    id: 'kling-3',
-    kieModel: 'kling-3.0/video',
-    name: 'Kling 3.0',
-    creator: 'Kuaishou',
-    desc: 'Personas y movimientos muy realistas. Hasta 15 s. Puede generar sonido.',
-    ratios: ['16:9', '9:16', '1:1'],
-    minDuration: 3,
-    maxDuration: 15,
-    qualities: [
-      { id: 'std', label: 'Estándar 720p' },
-      { id: 'pro', label: 'Pro 1080p' },
-    ],
-  },
-  {
-    id: 'seedance-2-fast',
-    kieModel: 'bytedance/seedance-2-fast',
-    name: 'Seedance 2.0 Fast',
-    creator: 'ByteDance',
-    desc: 'Rápido y económico, con mucha acción y cámara dinámica. Hasta 15 s.',
-    ratios: ['16:9', '9:16', '1:1'],
-    minDuration: 4,
-    maxDuration: 15,
-    qualities: [
-      { id: '480p', label: 'Borrador 480p' },
-      { id: '720p', label: 'Final 720p' },
-    ],
-  },
-];
-
-// Modelo de imágenes (miniaturas, portadas, creativos de anuncios)
-export const IMAGE_MODELS = [
-  {
-    id: 'nano-banana-2',
-    kieModel: 'nano-banana-2',
-    name: 'Nano Banana 2',
-    creator: 'Google',
-    desc: 'Imágenes de alta calidad con buen texto dentro de la imagen. Acepta foto de referencia.',
-    ratios: ['1:1', '16:9', '9:16', '4:5'],
-    qualities: [
-      { id: '1K', label: '1K' },
-      { id: '2K', label: '2K' },
-    ],
-  },
-];
+export { VIDEO_MODELS, IMAGE_MODELS, findModel } from './catalog/index.js';
+export {
+  VOICE_MODEL, VOICE_TURBO_MODEL, DIALOGUE_MODEL, ISOLATION_MODEL, VOICES,
+} from './catalog/audio/voices.js';
+export { MUSIC_KIE_MODEL, MUSIC_MODELS, MUSIC_LIMITS, MUSIC_VOCALS } from './catalog/audio/music.js';
 
 // Avatar que habla: una foto + un audio = video con labios sincronizados
 export const AVATAR_MODEL = {
@@ -58,33 +20,8 @@ export const AVATAR_MODEL = {
   name: 'Kling AI Avatar (720p)',
 };
 
-// Voz: ElevenLabs Multilingual v2 (habla español sin configurar nada extra)
-export const VOICE_MODEL = {
-  id: 'elevenlabs-v2',
-  kieModel: 'elevenlabs/text-to-speech-multilingual-v2',
-  name: 'ElevenLabs Multilingual v2',
-};
-
-// Algunas voces de la lista oficial de KIE (puedes escucharlas en
-// https://static.aiquickdraw.com/elevenlabs/voice/<id>.mp3)
-export const VOICES = [
-  { id: 'hpp4J3VqNfWAUOO0d1Us', label: 'Bella — profesional y cálida (mujer)' },
-  { id: '5l5f8iK3YPeGga21rQIX', label: 'Adeline — conversacional (mujer)' },
-  { id: 'BZgkqPqms7Kj9ulSkVzn', label: 'Eve — enérgica y alegre (mujer)' },
-  { id: 'nPczCjzI2devNBz1zQrb', label: 'Brian — profunda y confiable (hombre)' },
-  { id: 'TX3LPaxmHKxFdv7VOQHJ', label: 'Liam — creador de redes, enérgico (hombre)' },
-  { id: 'UgBBYS2sOqTuMpoF3BR0', label: 'Mark — natural y conversacional (hombre)' },
-  { id: 'wJqPPQ618aTW29mptyoc', label: 'Ana Rita — suave y expresiva (mujer)' },
-  { id: 'EkK5I93UQWFDigLMpZcX', label: 'James — ronca y atrevida (hombre)' },
-];
-
 // Modelo de texto para ganchos y guiones (Claude vía KIE, misma clave)
 export const TEXT_MODEL = 'claude-haiku-4-5';
-
-// Busca un modelo por su id dentro de una lista; devuelve undefined si no existe
-export function findModel(list, id) {
-  return list.find((m) => m.id === id);
-}
 
 // ===== Herramientas de edición (estilo Higgsfield) =====
 

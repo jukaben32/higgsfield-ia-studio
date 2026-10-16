@@ -446,3 +446,13 @@ button.credits-counter {
 @media (prefers-reduced-motion: reduce) {
   .spin-icon { animation: none; }
 }
+
+/* Lista de modelos del Studio: con muchos modelos, hace scroll en vez de alargar el panel */
+.model-list-scroll {
+  max-height: 280px;
+  overflow-y: auto;
+  padding-right: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}

@@ -37,15 +37,15 @@ const server = new Server(
 const TOOLS = [
   {
     name: 'higgsfield_generate_video',
-    description: 'Inicia un video con KIE.ai (Kling 3.0 o Seedance 2.0 Fast). Consume créditos. Devuelve task_id; luego usa higgsfield_get_status.',
+    description: 'Inicia un video con KIE.ai (Kling, Seedance, Veo 3.1, Wan, Grok, HappyHorse, Hailuo...). Usa higgsfield_list_models para ver las opciones de cada modelo. Consume créditos. Devuelve task_id; luego usa higgsfield_get_status.',
     inputSchema: {
       type: 'object',
       properties: {
-        prompt: { type: 'string', description: 'Descripción de la escena (máx. 2500 caracteres).' },
+        prompt: { type: 'string', description: 'Descripción de la escena (el máximo depende del modelo, 1000 a 5000 caracteres).' },
         model: { type: 'string', enum: VIDEO_MODELS.map((m) => m.id), description: 'Por defecto kling-3.' },
-        aspect_ratio: { type: 'string', enum: ['16:9', '9:16', '1:1'], description: '16:9 YouTube, 9:16 Reels/TikTok.' },
-        duration: { type: 'number', description: 'Segundos (Kling 3-15, Seedance 4-15). Por defecto 5.' },
-        quality: { type: 'string', description: 'kling-3: std|pro. seedance-2-fast: 480p|720p. Por defecto la más barata.' },
+        aspect_ratio: { type: 'string', description: '16:9 YouTube, 9:16 Reels/TikTok. Cada modelo acepta una lista distinta; por defecto la primera que permita.' },
+        duration: { type: 'number', description: 'Segundos. El rango o la lista exacta depende del modelo (ver higgsfield_list_models). Por defecto 5, o la primera permitida.' },
+        quality: { type: 'string', description: 'Depende del modelo (ej. kling-3: std|pro, seedance: 480p|720p|1080p, veo: 720p|1080p|4k). Por defecto la más barata.' },
         sound: { type: 'boolean', description: 'Generar sonido (cuesta más). Por defecto false.' },
         image_url: { type: 'string', description: 'Opcional: URL https de una imagen para animar.' },
       },
@@ -54,13 +54,14 @@ const TOOLS = [
   },
   {
     name: 'higgsfield_generate_image',
-    description: 'Inicia una imagen con Nano Banana 2 (KIE.ai). Consume créditos. Devuelve task_id; luego usa higgsfield_get_status.',
+    description: 'Inicia una imagen con KIE.ai (Nano Banana 2 o Pro, GPT Image 2, Seedream, Flux 2, Imagen 4, Ideogram...). Consume créditos. Devuelve task_id; luego usa higgsfield_get_status.',
     inputSchema: {
       type: 'object',
       properties: {
         prompt: { type: 'string', description: 'Descripción de la imagen.' },
-        aspect_ratio: { type: 'string', enum: IMAGE_MODELS[0].ratios },
-        quality: { type: 'string', enum: ['1K', '2K'] },
+        model: { type: 'string', enum: IMAGE_MODELS.map((m) => m.id), description: 'Por defecto nano-banana-2.' },
+        aspect_ratio: { type: 'string', description: 'Depende del modelo. Por defecto 1:1.' },
+        quality: { type: 'string', description: 'Depende del modelo (ej. 1K|2K|4K). Por defecto la primera que permita.' },
         image_url: { type: 'string', description: 'Opcional: URL https de una imagen de referencia.' },
       },
       required: ['prompt'],
@@ -126,19 +127,35 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: TOOLS }))
 // Convierte cada herramienta en la acción correspondiente del servidor
 async function runTool(name, args = {}) {
   if (name === 'higgsfield_list_models') {
-    return [...VIDEO_MODELS, ...IMAGE_MODELS].map(({ id, name: label, desc, ratios, qualities }) => ({
-      id, name: label, desc, ratios, qualities: qualities.map((q) => q.id),
-    }));
+    const describe = (kind) => (m) => ({
+      kind,
+      id: m.id,
+      name: m.name,
+      creator: m.creator,
+      desc: m.desc,
+      ratios: m.ratios,
+      qualities: m.qualities.map((q) => q.id),
+      // Solo video:
+      ...(kind === 'video' ? {
+        durations: m.durations || `${m.minDuration}-${m.maxDuration} s`,
+        image: m.image, // optional | required (solo anima una foto)
+        sound: m.sound,
+      } : { maxRefs: m.maxRefs }),
+    });
+    return [...VIDEO_MODELS.map(describe('video')), ...IMAGE_MODELS.map(describe('image'))];
   }
   if (name === 'higgsfield_generate_video') {
     const model = VIDEO_MODELS.find((m) => m.id === args.model) || VIDEO_MODELS[0];
+    // Valores por defecto que siempre son válidos para el modelo elegido
+    const defaultRatio = model.ratios.includes('16:9') ? '16:9' : model.ratios[0];
+    const defaultDuration = model.durations ? model.durations[0] : Math.min(Math.max(5, model.minDuration), model.maxDuration);
     return apiActions.generate({
       body: {
         type: 'video',
         model: model.id,
         prompt: args.prompt,
-        ratio: args.aspect_ratio || '16:9',
-        duration: args.duration ?? 5,
+        ratio: args.aspect_ratio || defaultRatio,
+        duration: args.duration ?? defaultDuration,
         quality: args.quality || model.qualities[0].id,
         sound: Boolean(args.sound),
         imageUrl: args.image_url,
@@ -146,13 +163,14 @@ async function runTool(name, args = {}) {
     });
   }
   if (name === 'higgsfield_generate_image') {
+    const model = IMAGE_MODELS.find((m) => m.id === args.model) || IMAGE_MODELS[0];
     return apiActions.generate({
       body: {
         type: 'image',
-        model: IMAGE_MODELS[0].id,
+        model: model.id,
         prompt: args.prompt,
-        ratio: args.aspect_ratio || '1:1',
-        quality: args.quality || '1K',
+        ratio: args.aspect_ratio || (model.ratios.includes('1:1') ? '1:1' : model.ratios[0]),
+        quality: args.quality || model.qualities[0].id,
         imageUrl: args.image_url,
       },
     });

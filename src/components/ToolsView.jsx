@@ -1,7 +1,7 @@
 // Herramientas de edición: mejorar calidad (Topaz), copiar movimiento (Kling)
 // y reemplazar el personaje de un video (Wan Animate).
 import { useState } from 'react';
-import { Sparkles, Move, UserRoundCog, Wand2, Clock } from 'lucide-react';
+import { Sparkles, Move, UserRoundCog, Wand2, Clock, Eraser, Focus } from 'lucide-react';
 import { UPSCALE_FACTORS, MOTION_MODEL, REPLACE_MODEL } from '../data/models';
 import { useGeneration } from '../hooks/useGeneration';
 import { describeState } from '../services/aiService';
@@ -13,6 +13,8 @@ const TOOLS = [
   { id: 'upscale', label: 'Mejorar calidad', icon: Sparkles, desc: 'Aumenta la resolución y nitidez de una imagen o de un video (Topaz).' },
   { id: 'motion', label: 'Copiar movimiento', icon: Move, desc: 'Toma el movimiento de un video y se lo aplica a tu personaje (Kling 3.0 Motion Control).' },
   { id: 'replace', label: 'Reemplazar personaje', icon: UserRoundCog, desc: 'Cambia a la persona de un video por la de tu foto (Wan 2.2 Animate).' },
+  { id: 'removebg', label: 'Quitar fondo', icon: Eraser, desc: 'Quita el fondo de una imagen y deja solo el sujeto (Recraft).' },
+  { id: 'crisp', label: 'Nitidez de imagen', icon: Focus, desc: 'Aumenta la nitidez y el detalle de una imagen (Recraft Crisp Upscale).' },
 ];
 
 // Opciones tipo "chip" reutilizables
@@ -66,6 +68,12 @@ export function ToolsView() {
     } else if (tool === 'motion') {
       params = { type: 'motion', imageUrl, videoUrl, quality, orientation, prompt };
       meta = { type: 'video', modelName: 'Kling 3.0 Motion Control', prompt: prompt || 'Copiar movimiento' };
+    } else if (tool === 'removebg') {
+      params = { type: 'removebg', imageUrl };
+      meta = { type: 'image', modelName: 'Recraft quitar fondo', prompt: 'Quitar el fondo de una imagen' };
+    } else if (tool === 'crisp') {
+      params = { type: 'crispup', imageUrl };
+      meta = { type: 'image', modelName: 'Recraft Crisp Upscale', prompt: 'Mejorar la nitidez de una imagen' };
     } else {
       params = { type: 'replace', imageUrl, videoUrl, quality };
       meta = { type: 'video', modelName: 'Wan 2.2 Animate Replace', prompt: 'Reemplazar personaje en video' };
@@ -74,8 +82,9 @@ export function ToolsView() {
     if (task) setResult({ url: task.urls[0], kind: meta.type, credits: task.credits });
   };
 
+  const isImageOnly = tool === 'removebg' || tool === 'crisp';
   const needsImage = tool !== 'upscale' || kind === 'image';
-  const needsVideo = tool !== 'upscale' || kind === 'video';
+  const needsVideo = !isImageOnly && (tool !== 'upscale' || kind === 'video');
 
   return (
     <div className="ads-studio-container">
@@ -135,7 +144,7 @@ export function ToolsView() {
 
           {needsImage && (
             <ImageUpload
-              label={tool === 'upscale' ? 'Imagen a mejorar' : 'Foto del personaje'}
+              label={tool === 'upscale' || tool === 'crisp' ? 'Imagen a mejorar' : tool === 'removebg' ? 'Imagen a la que quitar el fondo' : 'Foto del personaje'}
               hint={tool === 'motion' ? 'Se ve cabeza, hombros y torso (mínimo 340 px)' : 'Haz clic para subir una imagen'}
               imageUrl={imageUrl}
               onChange={setImageUrl}
@@ -150,7 +159,7 @@ export function ToolsView() {
             />
           )}
 
-          {tool !== 'upscale' && (
+          {(tool === 'motion' || tool === 'replace') && (
             <p style={{ fontSize: 11, color: 'var(--hf-text-muted)' }}>
               Usa solo fotos tuyas o de personas que te dieron permiso. No la uses para suplantar a nadie.
             </p>

@@ -10,18 +10,27 @@ con IA, usando **una sola clave de [KIE.ai](https://kie.ai)**.
 
 | Pestaña | Qué hace | Modelo (vía KIE.ai) |
 |---|---|---|
-| **Studio → Video** | Texto → video, o foto → video (16:9, 9:16, 1:1, 3–15 s, con o sin sonido) | Kling 3.0 · Seedance 2.0 Fast |
-| **Studio → Imagen** | Miniaturas, portadas y creativos, con foto de referencia opcional | Nano Banana 2 |
+| **Studio → Video** | Texto → video, o foto → video; cada modelo ofrece sus propios formatos, duraciones y calidades | 14 modelos: Kling 3.0 y 2.5 Turbo · Seedance 2.0, 2.0 Fast y 1.5 Pro · Veo 3.1 (Fast, Lite, Quality) · Wan 2.7 · Grok Imagine y 1.5 · HappyHorse · Hailuo 2.3 Pro y Standard (estos dos solo animan una foto) |
+| **Studio → Imagen** | Miniaturas, portadas y creativos, con fotos de referencia en los modelos que las aceptan | 12 modelos: Nano Banana 2 y Pro · GPT Image 2 · Seedream 5 Lite y 4.5 · Flux 2 Pro · Imagen 4 · Ideogram V3 · Qwen 2 · Grok Imagine · Z-Image · Wan 2.7 Imagen |
+| **Audio → Música** | Canciones con voz o instrumentales, a partir de una idea o de tu propia letra (2 versiones por pedido) | Suno V6, V6 Mini y V6 Wild |
+| **Audio → Voz / Diálogo / Aislar voz** | Texto a voz, conversación entre varias voces, y dejar solo la voz de un audio | ElevenLabs (Multilingual v2, Turbo 2.5, Diálogo v3, Aislar audio) |
 | **Cinema** | Un video con hasta 5 planos (3–15 s en total), con foto inicial opcional | Kling 3.0 multi-plano |
 | **Herramientas → Mejorar calidad** | Aumenta x2/x4 la resolución de una imagen o un video | Topaz |
 | **Herramientas → Copiar movimiento** | Aplica el movimiento de un video a tu personaje | Kling 3.0 Motion Control |
 | **Herramientas → Reemplazar personaje** | Cambia a la persona de un video por la de tu foto | Wan 2.2 Animate Replace |
+| **Herramientas → Quitar fondo / Nitidez de imagen** | Quita el fondo de una imagen o le aumenta la nitidez | Recraft |
 | **Studio → Efectos VFX** | 9 efectos listos (derretirse, fuego, flotar, explosión…) para tus videos | Kling / Seedance |
 | **Studio → Plantillas de imagen** | Probador virtual, mismo personaje en otra escena, producto en escena | Nano Banana 2 |
 | **Avatar** | Foto + guion → voz → video del personaje hablando con labios sincronizados | ElevenLabs Multilingual v2 + Kling AI Avatar |
 | **Ganchos y guiones** | 3 ganchos de anuncio con guion en español; se pueden mandar al Avatar | Claude Haiku 4.5 |
 | **Historial** | Guarda cada generación (en este navegador) para recuperarla y descargarla | — |
 | **Configuración** | Estado de la clave, saldo real de créditos y contraseña de acceso | — |
+
+> ⚠️ **Estado de las pruebas:** los pedidos de todos los modelos están verificados contra la documentación de
+> KIE y cubiertos por `npm test`, pero **ninguno se ha probado todavía con créditos reales**. Al agregar saldo,
+> prueba cada modelo nuevo una vez con la opción más barata antes de usarlo en serio.
+> Suno (música) y Veo 3.1 leen su resultado de un formato distinto al del resto; si alguna generación termina
+> sin archivo, la app avisa con el número de tarea para revisarla en kie.ai.
 
 Cada generación **consume créditos de KIE**. Los precios están en [kie.ai/pricing](https://kie.ai/pricing).
 KIE guarda los archivos generados **14 días** y las imágenes que subes **24 horas**: descarga lo que quieras conservar.
@@ -79,10 +88,22 @@ server/kie.js         Cliente de KIE.ai (aquí se usa la clave)
 server/buildTask.js   Valida y arma el pedido para cada modelo
 server/handlers.js    Lógica de /api/generate, status, upload, hooks, health
 server/vitePlugin.js  Hace que /api/* funcione con `npm run dev`
-src/data/models.js    Catálogo de modelos (sin claves)
-src/components/       Pantallas (Studio, Avatar, Ganchos, Historial, Configuración)
+src/data/models.js    Herramientas, efectos y plantillas; re-exporta el catálogo (sin claves)
+src/data/catalog/     Catálogo de modelos: UN ARCHIVO POR FAMILIA (video/, image/, audio/)
+src/components/       Pantallas (Studio, Audio, Herramientas, Avatar, Ganchos, Historial, Configuración)
 mcp-server/           Servidor MCP para Claude
 ```
+
+## ➕ Cómo agregar un modelo nuevo
+
+1. Busca su página en [docs.kie.ai/market](https://docs.kie.ai) y lee sus parámetros (nombres exactos, valores permitidos).
+2. Abre el archivo de su familia en `src/data/catalog/video/` o `image/` (o crea uno) y copia una entrada vecina.
+3. Ajusta sus opciones (`ratios`, `qualities`, duración…) y su función `build()`, que arma el pedido tal como lo pide KIE.
+   La forma de cada entrada está explicada en `src/data/catalog/helpers.js`.
+4. Agrégala a la lista en `src/data/catalog/index.js`.
+5. Agrega una prueba en `tests/catalog.test.mjs` y corre `npm test`.
+
+La pantalla Studio, el servidor y el MCP se actualizan solos: no hay que tocar nada más.
 
 ## 📚 Nota sobre el dossier
 
