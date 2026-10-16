@@ -164,12 +164,6 @@
   height: 36px;
 }
 
-.wave-bar {
-  width: 3px;
-  background: var(--hf-accent-cyan);
-  border-radius: 999px;
-  transition: height 0.15s ease;
-}
 
 /* Ads Studio */
 .ads-studio-container {
@@ -219,20 +213,11 @@
   background: rgba(0, 0, 0, 0.3);
   padding: 12px;
   border-radius: var(--hf-radius-md);
-  border-left: 3px solid var(--hf-accent-primary);
+  border: 1px solid var(--hf-border-subtle);
   font-style: italic;
 }
 
 /* Infinite Canvas */
-.canvas-wrapper {
-  height: calc(100vh - var(--hf-header-height));
-  width: 100%;
-  background: 
-    radial-gradient(circle, rgba(255, 255, 255, 0.06) 1px, transparent 1px) 0 0 / 24px 24px,
-    #09090e;
-  position: relative;
-  overflow: hidden;
-}
 
 .canvas-toolbar {
   position: absolute;
@@ -371,4 +356,93 @@
   border-radius: var(--hf-radius-sm);
   color: #fff;
   font-size: 11px;
+}
+
+/* ===== Piezas nuevas del estudio real (KIE.ai) ===== */
+
+/* Insignias de estado: verde = listo, rojo = falló */
+.badge-tag.emerald {
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--hf-accent-emerald);
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+.badge-tag.rose {
+  background: rgba(244, 63, 94, 0.1);
+  color: var(--hf-accent-rose);
+  border-color: rgba(244, 63, 94, 0.3);
+}
+
+/* Mensaje de error debajo de un campo o botón */
+.inline-error {
+  background: rgba(244, 63, 94, 0.12);
+  border: 1px solid rgba(244, 63, 94, 0.4);
+  border-radius: var(--hf-radius-sm);
+  padding: 8px 10px;
+  margin-top: 8px;
+  font-size: 12px;
+  color: #fca5a5;
+}
+
+/* Espacio vacío cuando todavía no hay resultado */
+.empty-stage {
+  min-height: 320px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--hf-text-muted);
+  text-align: center;
+  padding: 24px;
+}
+
+/* Casilla con texto (ej. "Generar sonido") */
+.toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--hf-text-secondary);
+  cursor: pointer;
+}
+
+/* Caja de ayuda con pasos */
+.help-box {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--hf-border-subtle);
+  border-radius: var(--hf-radius-md);
+  padding: 14px 16px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--hf-text-secondary);
+}
+
+.help-box ol {
+  margin: 8px 0 8px 18px;
+}
+
+.help-box a {
+  color: var(--hf-accent-cyan);
+}
+
+/* El contador de créditos ahora es un botón que lleva a Configuración */
+button.credits-counter {
+  cursor: pointer;
+  font-family: inherit;
+}
+
+/* Ícono girando mientras se sube un archivo */
+.spin-icon {
+  animation: spin-icon 1s linear infinite;
+  color: var(--hf-accent-cyan);
+}
+
+@keyframes spin-icon {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spin-icon { animation: none; }
 }

@@ -1,107 +1,90 @@
-# 🎬 Higgsfield AI Studio // Aether Core v3.0
+# 🎬 Betha IA Studio
 
-> **Suite Creativa Generativa Multimodal de Grado Cinematográfico y Publicitario**  
-> Recreación e ingeniería inversa con paridad funcional 1:1 de la plataforma [Higgsfield.ai](https://higgsfield.ai/).
+Estudio personal para crear videos, imágenes, avatares que hablan y guiones de anuncios
+con IA, usando **una sola clave de [KIE.ai](https://kie.ai)**.
 
-![Higgsfield AI Studio](https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=1200&q=80)
+> Inspirado en la experiencia de Higgsfield.ai, pero **no es una copia ni tiene relación con Higgsfield**.
+> Los modelos propios de Higgsfield (Soul, Genjutsu, Katana…) no están incluidos.
 
----
+## ✅ Qué hace de verdad
 
-## 🌟 Características Principales
+| Pestaña | Qué hace | Modelo (vía KIE.ai) |
+|---|---|---|
+| **Studio → Video** | Texto → video, o foto → video (16:9, 9:16, 1:1, 3–15 s, con o sin sonido) | Kling 3.0 · Seedance 2.0 Fast |
+| **Studio → Imagen** | Miniaturas, portadas y creativos, con foto de referencia opcional | Nano Banana 2 |
+| **Cinema** | Un video con hasta 5 planos (3–15 s en total), con foto inicial opcional | Kling 3.0 multi-plano |
+| **Herramientas → Mejorar calidad** | Aumenta x2/x4 la resolución de una imagen o un video | Topaz |
+| **Herramientas → Copiar movimiento** | Aplica el movimiento de un video a tu personaje | Kling 3.0 Motion Control |
+| **Herramientas → Reemplazar personaje** | Cambia a la persona de un video por la de tu foto | Wan 2.2 Animate Replace |
+| **Studio → Efectos VFX** | 9 efectos listos (derretirse, fuego, flotar, explosión…) para tus videos | Kling / Seedance |
+| **Studio → Plantillas de imagen** | Probador virtual, mismo personaje en otra escena, producto en escena | Nano Banana 2 |
+| **Avatar** | Foto + guion → voz → video del personaje hablando con labios sincronizados | ElevenLabs Multilingual v2 + Kling AI Avatar |
+| **Ganchos y guiones** | 3 ganchos de anuncio con guion en español; se pueden mandar al Avatar | Claude Haiku 4.5 |
+| **Historial** | Guarda cada generación (en este navegador) para recuperarla y descargarla | — |
+| **Configuración** | Estado de la clave, saldo real de créditos y contraseña de acceso | — |
 
-### 1. 🎬 Generative Studio (Text-to-Video & Image-to-Video)
-- **Modelos de Difusión SOTA Integrados:**
-  - `Wan 3.0 Pro` (1080p Cinema, física de fluidos e iluminación natural)
-  - `ByteDance Seedance 2.5` (Movimientos de acción ultra rápidos y dinámicos)
-  - `Kling 3.0 Ultra` (Hiperrealismo humano y simulación de telas)
-  - `Higgsfield Soul v2` (Retratos sin textura plástica y micro-expresiones)
-  - `Sora 2 / Veo 3.1` (Master de estudio cinematográfico)
-- **Controles de Cámara 3D:** FPV Drone Orbit, Crash Zoom 4K, Low Angle Hero, Dutch Angle, Anamorphic Pan.
-- **Aspect Ratios:** `16:9` (Cine), `9:16` (TikTok/Reels), `1:1` (Square), `4:5` (Social).
-- **Simulador de Orquestación `fnf-*`:** Pipeline multi-fase en tiempo real (Latent Denoising -> Temporal Vectors -> 4K Neural Super-Resolution -> Dolby Audio Sync).
+Cada generación **consume créditos de KIE**. Los precios están en [kie.ai/pricing](https://kie.ai/pricing).
+KIE guarda los archivos generados **14 días** y las imágenes que subes **24 horas**: descarga lo que quieras conservar.
 
-### 2. ⚡ Genjutsu Engine (Motion Transfer & VFX Retargeting)
-- Extracción de postura con malla esquelética **DWPose (240 keypoints)**.
-- Retargeting cinemático de movimiento sobre avatares y personajes manteniendo consistencia facial y física de ropa.
-- Conmutador de composición: Síntesis de escena latente vs. preservación del plato original.
+## 🚀 Cómo usarlo en tu PC (paso a paso)
 
-### 3. 👤 AI Influencer Studio
-- Anclaje y consistencia de identidad facial persistente en múltiples tomas.
-- Generador de guiones virales para TikTok, YouTube Shorts e Instagram Reels.
-- Motor de voz neuronal y clonación con soporte para perfiles de ElevenLabs y Fish Audio.
-- Visualizador interactivo de ondas de audio y sincronización labial (*fnf-aitys*).
+1. Instala las dependencias (solo la primera vez):
+   ```bash
+   npm install
+   ```
+2. Copia `.env.example` como `.env` y escribe tu clave de KIE:
+   ```
+   KIE_API_KEY=<tu clave de kie.ai/api-key>
+   ```
+3. Arranca la app:
+   ```bash
+   npm run dev
+   ```
+4. Abre **http://localhost:5173**. En *Configuración* deberías ver "La clave de KIE está configurada" y tu saldo.
 
-### 4. 📢 Ads Studio (AI CMO & Hook Multiplier)
-- Ingesta de URLs de productos e-commerce (Shopify, Amazon, Landing Pages).
-- Multiplicador de ganchos de alto CTR con 3 marcos psicológicos:
-  - *Problem / Pain Agitation* (Marco de dolor)
-  - *Curiosity Gap / Pattern Interrupt* (Interrupción de patrón)
-  - *Secret Hack / Social Proof* (Prueba social)
-- Previsualizador multiformato con tipografía dinámica superpuesta.
+## 🔒 Seguridad
 
-### 5. 🎨 Infinite Canvas (Workflow Graph Engine)
-- Lienzo visual basado en grafos interactivos (`canvas-worker.higgsfield.ai`).
-- Enlace de nodos: `Prompt Directive -> Genjutsu Pose -> Diffusion Compute -> Audio Lip-sync -> Master 4K`.
+- La clave de KIE **solo vive en el servidor** (carpeta `server/`). El navegador habla con `/api/*`, nunca con KIE directamente.
+- Nunca pongas claves en variables que empiecen con `VITE_`: esas se copian dentro de la página y cualquiera podría verlas.
+- Si publicas en Vercel, **define `APP_PASSWORD`**. Sin ella la app publicada se niega a generar (para que nadie gaste tus créditos).
 
-### 6. 🌐 Community Explore & 1-Click Remix
-- Feed social con filtros (*Cinematic, Genjutsu, Cyberpunk, Fashion*).
-- Botón **1-Click Remix** para clonar prompts, vectores de cámara y semillas latentes directamente en el Studio.
+## ☁️ Publicar en Vercel (opcional)
 
-### 7. 🔌 Developer Cloud API & Servidor MCP (`@higgsfield/mcp`)
-- Servidor nativo **Model Context Protocol (MCP)** para controlar el estudio desde Claude, Cursor, ChatGPT y agentes autónomos.
-- Probador interactivo de llamadas **JSON-RPC 2.0**.
-- Gestor de API Keys (`HF_API_KEY_ID:HF_API_KEY_SECRET`) y snippets en cURL, Python SDK y configuración MCP.
+1. Importa el repositorio en Vercel.
+2. En *Settings → Environment Variables* agrega `KIE_API_KEY` y `APP_PASSWORD`.
+3. Despliega. Las funciones de `api/` se publican solas.
+4. Abre la app, ve a *Configuración* y escribe tu contraseña.
 
----
+Límite: en Vercel las imágenes que subes deben pesar **menos de 3 MB**.
 
-## 🛠️ Stack Tecnológico
+## 🤖 Usarlo desde Claude (servidor MCP)
 
-- **Frontend:** React 19 + Vite (Fast HMR)
-- **Design System ("Quanta"):** Vanilla CSS con tokens de tema oscuro profundo (`#07070a`), degradados violeta/cian y micro-animaciones.
-- **Tipografía:** Google Fonts (`Outfit`, `Plus Jakarta Sans`, `JetBrains Mono`).
-- **Iconografía:** Lucide React Icons.
-- **Motor de Inferencia:** Arquitectura plug-and-play compatible con Fal.ai, Replicate, RunPod y ComfyUI local.
+`mcp-server/index.mjs` expone estas herramientas (lee `KIE_API_KEY` del `.env`):
 
----
+- `higgsfield_generate_video` y `higgsfield_generate_image` → devuelven un `taskId`
+- `higgsfield_upscale` y `higgsfield_motion_transfer`
+- `higgsfield_get_status` → consulta el resultado (gratis)
+- `higgsfield_generate_ad_hooks` → 3 ganchos con guion
+- `higgsfield_list_models` → modelos disponibles
 
-## 🚀 Inicio Rápido
+## ✅ Pruebas
 
-### Requisitos Previos
-- Node.js v18 o superior
-- npm v9 o superior
+`npm test` revisa que los pedidos a KIE se armen y se validen bien. No llama a KIE ni gasta créditos.
 
-### Instalación y Ejecución
+## 🗂️ Estructura
 
-```bash
-# 1. Clonar el repositorio
-git clone https://github.com/jukaben32/higgsfield-ia-studio.git
-cd higgsfield-ia-studio
-
-# 2. Instalar dependencias
-npm install
-
-# 3. Iniciar el servidor de desarrollo
-npm run dev
+```
+api/[route].js        Función de Vercel (usa server/handlers.js)
+server/kie.js         Cliente de KIE.ai (aquí se usa la clave)
+server/buildTask.js   Valida y arma el pedido para cada modelo
+server/handlers.js    Lógica de /api/generate, status, upload, hooks, health
+server/vitePlugin.js  Hace que /api/* funcione con `npm run dev`
+src/data/models.js    Catálogo de modelos (sin claves)
+src/components/       Pantallas (Studio, Avatar, Ganchos, Historial, Configuración)
+mcp-server/           Servidor MCP para Claude
 ```
 
-Abre en tu navegador: **`http://localhost:5173`**
+## 📚 Nota sobre el dossier
 
-### Compilación para Producción
-
-```bash
-npm run build
-npm run preview
-```
-
----
-
-## 📚 Documentación Técnica e Ingeniería Inversa
-
-Para consultar la investigación técnica exhaustiva, contratos de endpoints, arquitectura de microservicios (`fnf-*`) y análisis de bundles AST, consulta:  
-👉 **[Dossier de Ingeniería Inversa (docs/HIGGSFIELD_REVERSE_ENGINEERING_DOSSIER.md)](./docs/HIGGSFIELD_REVERSE_ENGINEERING_DOSSIER.md)**
-
----
-
-## 📄 Licencia
-
-MIT License © 2026 Higgsfield AI Studio Contributors.
+`docs/HIGGSFIELD_REVERSE_ENGINEERING_DOSSIER.md` es material de investigación **no verificado**:
+describe servicios internos de Higgsfield que no se pudieron comprobar. No lo uses como especificación.

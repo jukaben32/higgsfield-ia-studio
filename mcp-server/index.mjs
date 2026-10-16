@@ -1,264 +1,210 @@
+// Servidor MCP del estudio: permite pedirle a Claude (u otro cliente MCP)
+// que genere videos, imágenes y ganchos con KIE.ai. Reutiliza exactamente
+// la misma lógica y validaciones que la app web (carpeta server/).
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import {
-  CallToolRequestSchema,
-  ListToolsRequestSchema,
-} from '@modelcontextprotocol/sdk/types.js';
+import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { apiActions } from '../server/handlers.js';
+import { PublicError } from '../server/kie.js';
+import { VIDEO_MODELS, IMAGE_MODELS } from '../src/data/models.js';
 
-// Auto-load .env from project root or user home
+// Carga el .env de la raíz del proyecto (KIE_API_KEY) si existe
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const envPath = path.resolve(__dirname, '..', '.env');
 if (fs.existsSync(envPath)) {
   try {
-    const content = fs.readFileSync(envPath, 'utf8');
-    for (const line of content.split(/\r?\n/)) {
+    for (const line of fs.readFileSync(envPath, 'utf8').split(/\r?\n/)) {
       const trimmed = line.trim();
-      if (trimmed && !trimmed.startsWith('#') && trimmed.includes('=')) {
-        const idx = trimmed.indexOf('=');
-        const k = trimmed.slice(0, idx).trim();
-        const val = trimmed.slice(idx + 1).trim().replace(/^["']|["']$/g, '');
-        if (k && !process.env[k]) {
-          process.env[k] = val;
-        }
-      }
+      if (!trimmed || trimmed.startsWith('#') || !trimmed.includes('=')) continue;
+      const idx = trimmed.indexOf('=');
+      const k = trimmed.slice(0, idx).trim();
+      const val = trimmed.slice(idx + 1).trim().replace(/^["']|["']$/g, '');
+      if (k && !process.env[k]) process.env[k] = val;
     }
-  } catch (e) {}
+  } catch (e) {
+    console.error('No se pudo leer .env:', e.message);
+  }
 }
 
-// Setup MCP Server
 const server = new Server(
-  {
-    name: 'higgsfield-studio-mcp',
-    version: '1.0.0',
-  },
-  {
-    capabilities: {
-      tools: {},
-    },
-  }
+  { name: 'higgsfield-studio-mcp', version: '2.0.0' },
+  { capabilities: { tools: {} } }
 );
 
-// Tool Definitions
-server.setRequestHandler(ListToolsRequestSchema, async () => {
-  return {
-    tools: [
-      {
-        name: 'higgsfield_generate_video',
-        description: 'Generates cinematic AI videos for YouTube (16:9) or social ads (9:16) using Wan 3.0, Kling, or MiniMax.',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            prompt: {
-              type: 'string',
-              description: 'Detailed cinematic scene description, lighting, camera angle, and action.',
-            },
-            model: {
-              type: 'string',
-              enum: ['wan-3.0', 'kling-3.0', 'seedance-2.5'],
-              description: 'AI Foundation model. Default: wan-3.0.',
-            },
-            aspect_ratio: {
-              type: 'string',
-              enum: ['16:9', '9:16', '1:1', '4:5'],
-              description: 'Aspect ratio: 16:9 for YouTube, 9:16 for TikTok/Reels/Shorts.',
-            },
-            duration: {
-              type: 'number',
-              description: 'Duration in seconds (5-10). Default is 5.',
-            },
-          },
-          required: ['prompt'],
-        },
+const TOOLS = [
+  {
+    name: 'higgsfield_generate_video',
+    description: 'Inicia un video con KIE.ai (Kling 3.0 o Seedance 2.0 Fast). Consume créditos. Devuelve task_id; luego usa higgsfield_get_status.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        prompt: { type: 'string', description: 'Descripción de la escena (máx. 2500 caracteres).' },
+        model: { type: 'string', enum: VIDEO_MODELS.map((m) => m.id), description: 'Por defecto kling-3.' },
+        aspect_ratio: { type: 'string', enum: ['16:9', '9:16', '1:1'], description: '16:9 YouTube, 9:16 Reels/TikTok.' },
+        duration: { type: 'number', description: 'Segundos (Kling 3-15, Seedance 4-15). Por defecto 5.' },
+        quality: { type: 'string', description: 'kling-3: std|pro. seedance-2-fast: 480p|720p. Por defecto la más barata.' },
+        sound: { type: 'boolean', description: 'Generar sonido (cuesta más). Por defecto false.' },
+        image_url: { type: 'string', description: 'Opcional: URL https de una imagen para animar.' },
       },
-      {
-        name: 'higgsfield_generate_ad_hooks',
-        description: 'Generates 3 high-converting video ad hooks and script outlines for YouTube or TikTok.',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            product_or_topic: {
-              type: 'string',
-              description: 'Name, URL, or description of the product/topic for the ad.',
-            },
-            target_audience: {
-              type: 'string',
-              description: 'Target audience demographic or niche.',
-            },
-          },
-          required: ['product_or_topic'],
-        },
+      required: ['prompt'],
+    },
+  },
+  {
+    name: 'higgsfield_generate_image',
+    description: 'Inicia una imagen con Nano Banana 2 (KIE.ai). Consume créditos. Devuelve task_id; luego usa higgsfield_get_status.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        prompt: { type: 'string', description: 'Descripción de la imagen.' },
+        aspect_ratio: { type: 'string', enum: IMAGE_MODELS[0].ratios },
+        quality: { type: 'string', enum: ['1K', '2K'] },
+        image_url: { type: 'string', description: 'Opcional: URL https de una imagen de referencia.' },
       },
-      {
-        name: 'higgsfield_list_models',
-        description: 'Returns the catalog of available video and VFX models in Higgsfield AI Studio.',
-        inputSchema: {
-          type: 'object',
-          properties: {},
-        },
+      required: ['prompt'],
+    },
+  },
+  {
+    name: 'higgsfield_upscale',
+    description: 'Mejora la calidad de una imagen o un video con Topaz (KIE.ai). Consume créditos. Devuelve task_id.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        kind: { type: 'string', enum: ['image', 'video'] },
+        url: { type: 'string', description: 'URL https de la imagen o del video.' },
+        factor: { type: 'string', enum: ['1', '2', '4'], description: 'Aumento. Para video: 2 o 4. Por defecto 2.' },
       },
-    ],
-  };
-});
+      required: ['kind', 'url'],
+    },
+  },
+  {
+    name: 'higgsfield_motion_transfer',
+    description: 'Copia el movimiento de un video sobre un personaje (Kling 3.0 Motion Control). Consume créditos. Devuelve task_id.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        image_url: { type: 'string', description: 'URL https de la foto del personaje (se ven cabeza y torso).' },
+        video_url: { type: 'string', description: 'URL https del video con el movimiento (3-30 s).' },
+        quality: { type: 'string', enum: ['720p', '1080p'] },
+        prompt: { type: 'string', description: 'Opcional: descripción de la escena.' },
+      },
+      required: ['image_url', 'video_url'],
+    },
+  },
+  {
+    name: 'higgsfield_get_status',
+    description: 'Consulta una generación por task_id. Estados: waiting, queuing, generating, success, fail. Gratis.',
+    inputSchema: {
+      type: 'object',
+      properties: { task_id: { type: 'string' } },
+      required: ['task_id'],
+    },
+  },
+  {
+    name: 'higgsfield_generate_ad_hooks',
+    description: 'Escribe 3 ganchos de anuncio con guion (en español) usando Claude vía KIE.ai.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        product_or_topic: { type: 'string', description: 'Descripción del producto o servicio.' },
+        target_audience: { type: 'string', description: 'Público objetivo.' },
+      },
+      required: ['product_or_topic'],
+    },
+  },
+  {
+    name: 'higgsfield_list_models',
+    description: 'Lista los modelos reales disponibles en el estudio.',
+    inputSchema: { type: 'object', properties: {} },
+  },
+];
 
-// Tool Call Execution Handler
+server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: TOOLS }));
+
+// Convierte cada herramienta en la acción correspondiente del servidor
+async function runTool(name, args = {}) {
+  if (name === 'higgsfield_list_models') {
+    return [...VIDEO_MODELS, ...IMAGE_MODELS].map(({ id, name: label, desc, ratios, qualities }) => ({
+      id, name: label, desc, ratios, qualities: qualities.map((q) => q.id),
+    }));
+  }
+  if (name === 'higgsfield_generate_video') {
+    const model = VIDEO_MODELS.find((m) => m.id === args.model) || VIDEO_MODELS[0];
+    return apiActions.generate({
+      body: {
+        type: 'video',
+        model: model.id,
+        prompt: args.prompt,
+        ratio: args.aspect_ratio || '16:9',
+        duration: args.duration ?? 5,
+        quality: args.quality || model.qualities[0].id,
+        sound: Boolean(args.sound),
+        imageUrl: args.image_url,
+      },
+    });
+  }
+  if (name === 'higgsfield_generate_image') {
+    return apiActions.generate({
+      body: {
+        type: 'image',
+        model: IMAGE_MODELS[0].id,
+        prompt: args.prompt,
+        ratio: args.aspect_ratio || '1:1',
+        quality: args.quality || '1K',
+        imageUrl: args.image_url,
+      },
+    });
+  }
+  if (name === 'higgsfield_upscale') {
+    return apiActions.generate({
+      body: {
+        type: 'upscale',
+        kind: args.kind,
+        factor: args.factor || '2',
+        imageUrl: args.kind === 'image' ? args.url : undefined,
+        videoUrl: args.kind === 'video' ? args.url : undefined,
+      },
+    });
+  }
+  if (name === 'higgsfield_motion_transfer') {
+    return apiActions.generate({
+      body: {
+        type: 'motion',
+        imageUrl: args.image_url,
+        videoUrl: args.video_url,
+        quality: args.quality || '720p',
+        prompt: args.prompt,
+      },
+    });
+  }
+  if (name === 'higgsfield_get_status') {
+    return apiActions.status({ query: { taskId: args.task_id } });
+  }
+  if (name === 'higgsfield_generate_ad_hooks') {
+    return apiActions.hooks({ body: { topic: args.product_or_topic, audience: args.target_audience } });
+  }
+  throw new PublicError(`Herramienta desconocida: ${name}`);
+}
+
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
-
-  if (name === 'higgsfield_list_models') {
-    return {
-      content: [
-        {
-          type: 'text',
-          text: JSON.stringify(
-            [
-              { id: 'wan-3.0', name: 'Wan 3.0 Pro', type: 'Text/Image-to-Video', resolution: '1080p Cinema', ideal_for: 'YouTube 16:9, cinematic physics' },
-              { id: 'kling-3.0', name: 'Kling 3.0 Ultra', type: 'Video Generation', resolution: '1080p', ideal_for: 'Hyper-realistic human and cloth movement' },
-              { id: 'seedance-2.5', name: 'ByteDance Seedance 2.5', type: 'Dynamic Action Video', resolution: '720p/1080p', ideal_for: 'Fast camera pans, drone tracking' },
-              { id: 'genjutsu-v1', name: 'Higgsfield Genjutsu v1', type: 'Motion Transfer & Retargeting', ideal_for: 'Copying reference movement onto character' },
-              { id: 'soul-v2', name: 'Higgsfield Soul v2', type: 'Identity Portrait', ideal_for: 'Zero-plastic human portraits' },
-            ],
-            null,
-            2
-          ),
-        },
-      ],
-    };
+  try {
+    const result = await runTool(name, args);
+    return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+  } catch (err) {
+    const message = err instanceof PublicError ? err.message : 'Error inesperado en el servidor MCP.';
+    if (!(err instanceof PublicError)) console.error(err);
+    return { isError: true, content: [{ type: 'text', text: message }] };
   }
-
-  if (name === 'higgsfield_generate_ad_hooks') {
-    const topic = args?.product_or_topic || 'Product';
-    const audience = args?.target_audience || 'General buyers';
-
-    const hooks = [
-      {
-        framework: 'Problem / Pain Agitation',
-        headline: `Why 90% of people fail with ${topic} (And how to fix it in 30 seconds)`,
-        hook_script: `If you have been struggling with ${topic}, chances are you are making this one critical mistake that everyone ignores...`,
-        visual_direction: 'Fast-paced zoom on problem scenario, followed by dramatic reveal.',
-      },
-      {
-        framework: 'Curiosity Gap / Pattern Interrupt',
-        headline: `Stop scrolling if you care about ${topic}`,
-        hook_script: `I tested the top 3 solutions for ${topic} for 30 days straight. The results completely surprised me...`,
-        visual_direction: 'Direct eye-contact avatar with split-screen before/after proof.',
-      },
-      {
-        framework: 'Secret Hack / Social Proof',
-        headline: `The exact blueprint used to master ${topic}`,
-        hook_script: `Top experts gatekeep this technique. Here is how you can get started today with zero friction...`,
-        visual_direction: 'Clean screen recording or cinematic product showcase with kinetic typography.',
-      },
-    ];
-
-    return {
-      content: [
-        {
-          type: 'text',
-          text: JSON.stringify({ product: topic, target_audience: audience, generated_hooks: hooks }, null, 2),
-        },
-      ],
-    };
-  }
-
-  if (name === 'higgsfield_generate_video') {
-    const prompt = args?.prompt;
-    const model = args?.model || 'wan-3.0';
-    const aspectRatio = args?.aspect_ratio || '16:9';
-    const duration = args?.duration || 5;
-
-    const falKey = process.env.FAL_KEY || process.env.VITE_FAL_KEY;
-
-    if (falKey) {
-      try {
-        let endpoint = 'fal-ai/wan-2.1/text-to-video';
-        if (model === 'kling-3.0') endpoint = 'fal-ai/kling-video/v1.5/pro/text-to-video';
-        if (model === 'seedance-2.5') endpoint = 'fal-ai/minimax-video';
-
-        const submitRes = await fetch(`https://queue.fal.run/${endpoint}`, {
-          method: 'POST',
-          headers: {
-            Authorization: `Key ${falKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            prompt: prompt,
-            aspect_ratio: aspectRatio,
-            duration: duration,
-          }),
-        });
-
-        if (!submitRes.ok) {
-          const err = await submitRes.text();
-          throw new Error(`Fal.ai submission failed: ${err}`);
-        }
-
-        const queueData = await submitRes.json();
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(
-                {
-                  status: 'queued_on_gpu_cluster',
-                  model: model,
-                  request_id: queueData.request_id,
-                  aspect_ratio: aspectRatio,
-                  duration_seconds: duration,
-                  prompt: prompt,
-                  message: 'Video rendering initiated on H100 GPU node. Poll status URL for final MP4 container.',
-                  status_url: queueData.status_url,
-                  response_url: queueData.response_url,
-                },
-                null,
-                2
-              ),
-            },
-          ],
-        };
-      } catch (err) {
-        return {
-          isError: true,
-          content: [{ type: 'text', text: `GPU Execution error: ${err.message}` }],
-        };
-      }
-    }
-
-    // Default response when FAL_KEY is not in environment
-    return {
-      content: [
-        {
-          type: 'text',
-          text: JSON.stringify(
-            {
-              status: 'ready_to_render',
-              model: model,
-              aspect_ratio: aspectRatio,
-              duration_seconds: duration,
-              prompt: prompt,
-              instructions: 'FAL_KEY environment variable is not set. You can set FAL_KEY in your MCP config or enter it in Higgsfield Studio Settings at http://localhost:5173 to render real 4K MP4 videos.',
-              sample_output_preview: 'https://assets.mixkit.co/videos/preview/mixkit-cyberpunk-city-at-night-with-skyscrapers-and-neon-lights-40822-large.mp4',
-            },
-            null,
-            2
-          ),
-        },
-      ],
-    };
-  }
-
-  throw new Error(`Unknown tool requested: ${name}`);
 });
 
-// Start Server
 async function main() {
-  const transport = new StdioServerTransport();
-  await server.connect(transport);
+  await server.connect(new StdioServerTransport());
 }
 
 main().catch((error) => {
-  console.error('Fatal MCP Server error:', error);
+  console.error('Error fatal del servidor MCP:', error);
   process.exit(1);
 });

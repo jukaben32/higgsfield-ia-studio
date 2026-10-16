@@ -1,235 +1,144 @@
+// Avatar que habla: sube una foto + escribe un guion.
+// Paso 1: KIE convierte el guion en voz (ElevenLabs).
+// Paso 2: KIE anima la foto para que hable con esa voz (Kling AI Avatar).
 import React, { useState } from 'react';
-import { 
-  Users, Sparkles, Mic, Volume2, Play, Pause, Video, 
-  RotateCcw, Sliders, Check, Download, Wand2, PlusCircle
-} from 'lucide-react';
-import { AI_INFLUENCERS } from '../data/mockAssets';
+import { Users, Wand2, ExternalLink, Mic } from 'lucide-react';
+import { VOICES, VOICE_MODEL, AVATAR_MODEL } from '../data/models';
+import { useGeneration } from '../hooks/useGeneration';
+import { describeState } from '../services/aiService';
+import { ImageUpload } from './ImageUpload';
 
-export function InfluencerView() {
-  const [selectedInfluencer, setSelectedInfluencer] = useState(AI_INFLUENCERS[0]);
-  const [script, setScript] = useState(selectedInfluencer.sampleScript);
-  const [voiceTone, setVoiceTone] = useState('Viral Hook & High Energy');
-  const [isGeneratingSpeech, setIsGeneratingSpeech] = useState(false);
-  const [isPlayingAudio, setIsPlayingAudio] = useState(false);
-  const [renderedVideo, setRenderedVideo] = useState(false);
-  const [renderProgress, setRenderProgress] = useState(0);
+const DEFAULT_SCRIPT = '¿Sigues publicando contenido sin resultados? En nuestra agencia usamos inteligencia artificial para crear videos que venden. Escríbenos hoy y te mostramos cómo.';
+const MAX_SCRIPT = 1500;
 
-  const handleSelectInfluencer = (inf) => {
-    setSelectedInfluencer(inf);
-    setScript(inf.sampleScript);
-    setRenderedVideo(false);
-  };
+export function InfluencerView({ incomingScript }) {
+  const [photoUrl, setPhotoUrl] = useState('');
+  const [script, setScript] = useState(DEFAULT_SCRIPT);
+  const [voice, setVoice] = useState(VOICES[0].id);
+  const [gesture, setGesture] = useState('');
+  const [step, setStep] = useState(''); // texto del paso actual
+  const [audioUrl, setAudioUrl] = useState('');
+  const [videoUrl, setVideoUrl] = useState('');
+  const { run, isRunning, state, error, setError } = useGeneration();
 
-  const handleRenderInfluencerVideo = () => {
-    setIsGeneratingSpeech(true);
-    setRenderProgress(0);
-    setRenderedVideo(false);
+  // Si llega un guion nuevo desde la pestaña Guiones ({ text, sentAt }), lo ponemos
+  // en el editor. Comparamos sentAt para cargarlo solo una vez por envío.
+  const [lastSentAt, setLastSentAt] = useState(null);
+  if (incomingScript?.text && incomingScript.sentAt !== lastSentAt) {
+    setLastSentAt(incomingScript.sentAt);
+    setScript(incomingScript.text.slice(0, MAX_SCRIPT));
+  }
 
-    const interval = setInterval(() => {
-      setRenderProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          setIsGeneratingSpeech(false);
-          setRenderedVideo(true);
-          return 100;
-        }
-        return prev + 10;
-      });
-    }, 150);
-  };
-
-  const handleSimulateAudioPlay = () => {
-    if (isPlayingAudio) {
-      setIsPlayingAudio(false);
-    } else {
-      setIsPlayingAudio(true);
-      // Simulate synthetic web speech API if available
-      if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(script);
-        utterance.rate = 1.05;
-        utterance.onend = () => setIsPlayingAudio(false);
-        utterance.onerror = () => setIsPlayingAudio(false);
-        window.speechSynthesis.speak(utterance);
-      } else {
-        setTimeout(() => setIsPlayingAudio(false), 5000);
-      }
+  const handleGenerate = async () => {
+    if (!photoUrl) {
+      setError('Primero sube la foto del personaje.');
+      return;
     }
+    setVideoUrl('');
+    setAudioUrl('');
+
+    // Paso 1: guion → voz
+    setStep('Paso 1 de 2: creando la voz');
+    const voiceTask = await run(
+      { type: 'voice', text: script, voice },
+      { type: 'audio', modelName: VOICE_MODEL.name, prompt: script }
+    );
+    if (!voiceTask) return setStep('');
+    setAudioUrl(voiceTask.urls[0]);
+
+    // Paso 2: foto + voz → video del avatar hablando
+    setStep('Paso 2 de 2: animando el avatar');
+    const avatarTask = await run(
+      { type: 'avatar', imageUrl: photoUrl, audioUrl: voiceTask.urls[0], prompt: gesture },
+      { type: 'video', modelName: AVATAR_MODEL.name, prompt: script }
+    );
+    setStep('');
+    if (avatarTask) setVideoUrl(avatarTask.urls[0]);
   };
 
   return (
     <div className="influencer-grid">
-      {/* Sidebar: Character & Voice Setup */}
       <aside style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-        <div className="quanta-card">
-          <div className="panel-section-title">
-            <span>Identity Anchor Model</span>
-            <span className="badge-tag purple">Consistence Lock</span>
-          </div>
-
-          <div className="avatar-selector-grid">
-            {AI_INFLUENCERS.map(inf => (
-              <div 
-                key={inf.id}
-                className={`avatar-card ${selectedInfluencer.id === inf.id ? 'active' : ''}`}
-                onClick={() => handleSelectInfluencer(inf)}
-              >
-                <img src={inf.avatar} alt={inf.name} />
-                <div className="avatar-card-name">{inf.name.split(' ')[0]}</div>
-              </div>
-            ))}
-          </div>
-
-          <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--hf-border-subtle)' }}>
-            <div style={{ fontWeight: 600, fontSize: 14 }}>{selectedInfluencer.name}</div>
-            <div style={{ fontSize: 12, color: 'var(--hf-text-secondary)', marginTop: 2 }}>
-              {selectedInfluencer.niche} • {selectedInfluencer.followers} Reach
-            </div>
-          </div>
+        <div className="quanta-card" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <ImageUpload
+            label="Foto del personaje"
+            hint="Foto de frente, buena luz, rostro visible (PNG/JPG)"
+            imageUrl={photoUrl}
+            onChange={setPhotoUrl}
+          />
+          <p style={{ fontSize: 11, color: 'var(--hf-text-muted)' }}>
+            Usa solo fotos tuyas o de personas que te dieron permiso.
+          </p>
         </div>
 
-        {/* Voice Engine Setup */}
-        <div className="quanta-card" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div className="quanta-card" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div className="panel-section-title">
-            <span>Neural Voice & Lip-Sync (fnf-aitys)</span>
+            <span>Voz</span>
             <span className="badge-tag cyan">ElevenLabs</span>
           </div>
-
-          <div>
-            <label style={{ fontSize: 12, color: 'var(--hf-text-secondary)', display: 'block', marginBottom: 6 }}>
-              Cloned Voice Profile
-            </label>
-            <select 
-              value={selectedInfluencer.voice} 
-              onChange={() => {}}
-              style={{ width: '100%' }}
-            >
-              <option>{selectedInfluencer.voice}</option>
-              <option>FishAudio - Cinematic Storyteller</option>
-              <option>ElevenLabs - Adam (Deep Podcast)</option>
-            </select>
-          </div>
-
-          <div>
-            <label style={{ fontSize: 12, color: 'var(--hf-text-secondary)', display: 'block', marginBottom: 6 }}>
-              Emotional Cadence & Tone
-            </label>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              {['Viral Hook', 'Confident Pitch', 'Storytelling', 'Intimate'].map(t => (
-                <button 
-                  key={t}
-                  className={`chip-btn ${voiceTone.includes(t) ? 'active' : ''}`}
-                  onClick={() => setVoiceTone(t)}
-                >
-                  {t}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Interactive Waveform Audio Preview */}
-          <div className="audio-waveform-box">
-            <button 
-              id="preview-voice-btn"
-              className="btn-primary-gradient" 
-              style={{ width: 36, height: 36, padding: 0, borderRadius: '50%' }}
-              onClick={handleSimulateAudioPlay}
-            >
-              {isPlayingAudio ? <Pause size={14} /> : <Play size={14} />}
-            </button>
-            <div className="waveform-bars">
-              {[12, 24, 32, 18, 28, 36, 20, 14, 30, 22, 16, 26, 34, 18, 24, 30, 12, 28].map((h, i) => (
-                <div 
-                  key={i} 
-                  className="wave-bar" 
-                  style={{ 
-                    height: isPlayingAudio ? `${Math.max(8, (h * (Math.sin(Date.now() / 150 + i) + 1.2)))}px` : `${h / 2}px`,
-                    background: isPlayingAudio ? 'var(--hf-accent-cyan)' : 'rgba(255, 255, 255, 0.2)'
-                  }} 
-                />
-              ))}
-            </div>
-            <span style={{ fontSize: 11, fontFamily: 'var(--hf-font-mono)', color: 'var(--hf-accent-cyan)' }}>
-              {isPlayingAudio ? 'PLAYING' : 'AUDIO PREVIEW'}
-            </span>
-          </div>
+          <select value={voice} onChange={(e) => setVoice(e.target.value)} style={{ width: '100%' }}>
+            {VOICES.map((v) => <option key={v.id} value={v.id}>{v.label}</option>)}
+          </select>
+          <a
+            href={`https://static.aiquickdraw.com/elevenlabs/voice/${voice}.mp3`}
+            target="_blank"
+            rel="noreferrer"
+            style={{ fontSize: 12, color: 'var(--hf-accent-cyan)', display: 'flex', gap: 6, alignItems: 'center' }}
+          >
+            <Mic size={13} /> Escuchar muestra de esta voz
+          </a>
         </div>
       </aside>
 
-      {/* Main Studio: Script & Generation */}
       <main style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-        <div className="quanta-card" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div className="quanta-card" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <h3 style={{ fontSize: 18 }}>TikTok / Reels Script & Hook Generator</h3>
-            <span className="badge-tag cyan">9:16 Vertical Engine</span>
+            <h3 style={{ fontSize: 18, display: 'flex', gap: 8, alignItems: 'center' }}>
+              <Users size={18} color="var(--hf-accent-cyan)" /> Guion del avatar
+            </h3>
+            <span style={{ fontSize: 12, color: 'var(--hf-text-muted)' }}>{script.length} / {MAX_SCRIPT}</span>
           </div>
-
           <textarea
-            id="influencer-script-input"
             className="prompt-textarea"
             style={{ minHeight: 140, fontSize: 14 }}
+            maxLength={MAX_SCRIPT}
             value={script}
             onChange={(e) => setScript(e.target.value)}
-            placeholder="Type or generate the avatar script..."
+            placeholder="Escribe lo que dirá el avatar…"
+          />
+          <input
+            type="text"
+            value={gesture}
+            maxLength={300}
+            onChange={(e) => setGesture(e.target.value)}
+            placeholder="(Opcional) Gestos y cámara. Ej.: sonríe, mueve las manos, plano medio fijo"
           />
 
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button 
-                className="btn-secondary"
-                style={{ fontSize: 12 }}
-                onClick={() => setScript("Stop scrolling! If you are not using AI to automate your content in 2026, you are already falling behind. Here is the exact blueprint...")}
-              >
-                <Sparkles size={13} color="#06b6d4" /> Generate Viral Hook
-              </button>
-            </div>
-
-            <button 
-              id="render-influencer-video-btn"
-              className="btn-primary-gradient"
-              onClick={handleRenderInfluencerVideo}
-              disabled={isGeneratingSpeech}
-            >
-              <Wand2 size={16} />
-              <span>{isGeneratingSpeech ? `Synthesizing Avatar (${renderProgress}%)` : 'Generate Talking Avatar Video'}</span>
-            </button>
-          </div>
-
-          {isGeneratingSpeech && (
-            <div style={{ marginTop: 10 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 6 }}>
-                <span style={{ color: 'var(--hf-accent-secondary)' }}>Synchronizing phonemes & LivePortrait lip-sync...</span>
-                <span style={{ fontFamily: 'var(--hf-font-mono)' }}>{renderProgress}%</span>
-              </div>
-              <div className="progress-track">
-                <div className="progress-fill" style={{ width: `${renderProgress}%` }} />
-              </div>
-            </div>
-          )}
+          {error && <div className="inline-error">{error}</div>}
+          <button type="button" className="btn-primary-gradient" onClick={handleGenerate} disabled={isRunning} style={{ alignSelf: 'flex-end' }}>
+            <Wand2 size={16} />
+            <span>{isRunning ? `${step} — ${describeState(state)}` : 'Generar avatar que habla'}</span>
+          </button>
+          <p style={{ fontSize: 12, color: 'var(--hf-text-muted)', textAlign: 'right' }}>
+            Consume créditos de KIE por la voz y por el video (el costo depende de la duración del audio).
+          </p>
         </div>
 
-        {/* Video Preview */}
-        <div className="quanta-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: 24 }}>
-          <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span className="badge-tag emerald">9:16 READY FOR TIKTOK/REELS</span>
-              <span style={{ fontWeight: 600 }}>{selectedInfluencer.name} • Master Cut</span>
+        <div className="quanta-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, padding: 24 }}>
+          {audioUrl && <audio src={audioUrl} controls style={{ width: '100%' }} />}
+          {videoUrl ? (
+            <>
+              <video src={videoUrl} controls autoPlay playsInline style={{ maxWidth: 360, width: '100%', borderRadius: 16 }} />
+              <a href={videoUrl} target="_blank" rel="noreferrer" className="btn-secondary" style={{ fontSize: 12 }}>
+                <ExternalLink size={13} /> Abrir / Descargar video
+              </a>
+            </>
+          ) : (
+            <div className="empty-stage" style={{ minHeight: 220 }}>
+              <Users size={36} />
+              <p>{isRunning ? step : 'El video del avatar aparecerá aquí.'}</p>
             </div>
-            <button className="btn-secondary" style={{ fontSize: 12 }}>
-              <Download size={13} /> Export 9:16 MP4
-            </button>
-          </div>
-
-          <div style={{ width: 340, borderRadius: 20, overflow: 'hidden', border: '1px solid var(--hf-border-highlight)', boxShadow: 'var(--hf-shadow-elevated)' }}>
-            <video 
-              src="https://assets.mixkit.co/videos/preview/mixkit-fashion-model-walking-in-a-desert-41514-large.mp4"
-              autoPlay
-              loop
-              muted={false}
-              playsInline
-              style={{ width: '100%', display: 'block' }}
-            />
-          </div>
+          )}
         </div>
       </main>
     </div>

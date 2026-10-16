@@ -1,4 +1,8 @@
 # Dossier Técnico de Ingeniería Inversa: Higgsfield.ai
+
+> ⚠️ **No verificado.** Este documento se generó automáticamente y contiene suposiciones sobre la
+> arquitectura interna de Higgsfield (servicios `fnf-*`, endpoints, modelos) que no se comprobaron.
+> No lo uses como especificación. La app real está descrita en el README.
 **Objetivo:** Recreación y paridad funcional 1:1 de la plataforma Higgsfield.ai  
 **Herramienta de análisis:** REA (Reverse Engineer Anything) + Desempaquetado AST de Bundles TanStack/React
 

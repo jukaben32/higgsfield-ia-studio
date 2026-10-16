@@ -516,12 +516,6 @@ input[type="range"]::-webkit-slider-thumb:hover {
   position: relative;
 }
 
-.progress-fill {
-  height: 100%;
-  background: var(--hf-gradient-primary);
-  border-radius: 999px;
-  transition: width 0.3s ease;
-}
 
 .generation-metrics-grid {
   display: grid;
